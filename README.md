@@ -1,5 +1,31 @@
-fis-parser-node-sass
+fis-parser-node-sass-imweb
 ============================
+
+## 描述
+
+修改自fis官方提供的插件`fis-parser-node-sass`，支持查找lego_modules目录的组件。
+
+全局安装
+
+```bash
+npm install fis-parser-node-sass-imweb -g
+```
+
+使用
+
+```scss
+@import 'lego_modules/ui/a.scss'; // 等同 lego_modules/ui/0.0.1/a.scss ，默认使用ui目录的最新版本。
+@import 'lego_modules/ui@0.0.2/a.scss'; // 等同 lego_modules/ui/0.0.2/a.scss
+@import 'lego_modules/ui/0.0.3/a.scss'; // 等同 lego_modules/ui/0.0.3/a.scss
+```
+
+规范
+
+* 当引用路径包含lego_modules时，将路径转换为包含版本号的路径。
+
+
+# 以下为官方README内容
+
 
 ## 安装与使用 
 

@@ -11,6 +11,38 @@ var sass = require('node-sass');
 var util = require('util');
 var root;
 
+var _ = fis.util,
+    fs = _.fs,
+    compare = require('compare-version');
+
+// 查找lego目录
+function lookupLego(dir) {
+    if (dir.indexOf('lego_modules/') === -1) return dir;
+    var reg = /lego_modules\/([^@\/]+)([@\/]\d+\.\d+\.\d+)?\/(.*)$/,
+        lego = fis.project.getProjectPath('lego_modules');
+    dir = dir.replace(reg, function ($0, $1, $2, $3) {
+        var pkgName = $1 || '',
+            ver = $2 || '',
+            subFile = $3 || '',
+            versions;
+        if (!pkgName) return $0;
+        if (!ver) { // 默认最新
+            versions = fs.readdirSync(_(lego, pkgName)) || [];
+            if (versions.length > 1) {
+                versions = versions.sort(function (prev, cur) {
+                    return compare(prev, cur) <= 0;
+                });
+            }
+            ver = versions[0];
+        } else {
+            ver = ver.substr(1);
+        }
+        return 'lego_modules/' + pkgName + '/' + ver + '/' + subFile;
+    });
+
+    return dir;
+}
+
 function resolve_and_load(filename, dir) {
     // Resolution order for ambiguous imports:
     // (1) filename as given
@@ -78,7 +110,7 @@ function fixSourcePath(content, file) {
         if (info.file && info.file.subpath) {
             value = info.quote + info.file.subpath + info.query + info.quote;
         }
-        
+
         return value;
     });
 }
@@ -147,6 +179,10 @@ module.exports = function(content, file, conf){
 
     opts.importer = function(url, prev, done) {
         prev = prev.replace(/^\w+\:/, ''); // windows 里面莫名加个盘符。
+
+        url = lookupLego(url);
+        prev = lookupLego(prev);
+
         var prevFile = find(prev, stacks.concat(includePaths));
 
         if (!prevFile) {
@@ -210,8 +246,8 @@ module.exports = function(content, file, conf){
     //         file.cache.addDeps(dep);
     //     });
     // }
-    // 
-    
+    //
+
     if (mapping && ret.map) {
         var sourceMap = ret.map.toString('utf8');
 
@@ -235,7 +271,7 @@ module.exports = function(content, file, conf){
     content = content.replace(/('|")__scss_backup_(\d+)\1/g, function(_, quote, index) {
         return backups[index];
     });
-    
+
     return content;
 };
 
