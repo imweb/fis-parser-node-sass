@@ -3,7 +3,8 @@ fis-parser-node-sass-imweb
 
 ## 描述
 
-修改自fis官方提供的插件`fis-parser-node-sass`，支持查找lego_modules目录的组件。
+* 修改自fis官方提供的插件`fis-parser-node-sass`，支持查找lego_modules目录的组件。
+* 配合`fis3-command-imweb` 插件，提供了更好的watch性能，并支持watch到scss的依赖文件(import)
 
 全局安装
 
