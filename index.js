@@ -43,6 +43,12 @@ function lookupLego(dir) {
     return dir;
 }
 
+// 存储用到的scss文件
+function addScssLink(file,link){
+    file.scssLinks = file.scssLinks || [];
+    ~file.scssLinks.indexOf(link) || file.scssLinks.push(link);
+}
+
 function resolve_and_load(filename, dir) {
     // Resolution order for ambiguous imports:
     // (1) filename as given
@@ -216,9 +222,16 @@ module.exports = function(content, file, conf){
         }
         //解决include_path 内import导致subpath为空报错问题
         if(!target.subpath){
-            target.subpath = path.relative(root, target.realpath);
+            target.subpath = path.relative(root, target.realpath).replace(/\\/g,'/');
+            // 替换 \ 为 /
+            if(target.subpath[0]!==''){
+                target.subpath = '/' + target.subpath;
+            }
         }
+
         ~sources.indexOf(target.subpath) || sources.push(target.subpath);
+
+        addScssLink(file,target.subpath);
 
         return {
             file: target.subpath,
