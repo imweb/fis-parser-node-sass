@@ -19,7 +19,7 @@
   "scripts": {
   },
   "dependencies": {
-    "node-sass": "3.4.2",
+    "node-sass": "3.4.1",
     "compare-version":"*"
   }
 }
