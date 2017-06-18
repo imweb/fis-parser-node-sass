@@ -27,7 +27,14 @@ function lookupLego(dir) {
             versions;
         if (!pkgName) return $0;
         if (!ver) { // 默认最新
-            versions = fs.readdirSync(_(lego, pkgName)) || [];
+            var fullDir = _(lego, pkgName);
+            try {
+                versions = fs.readdirSync(fullDir) || [];
+            } catch (e) {
+                // 目录不存在
+                console.error('readdirSync error:', fullDir);
+                return $0;
+            }
             if (versions.length > 1) {
                 versions = versions.sort(function (prev, cur) {
                     return compare(prev, cur) <= 0;
@@ -44,7 +51,7 @@ function lookupLego(dir) {
 }
 
 // 存储用到的scss文件
-function addScssLink(file,link){
+function addScssLink(file, link) {
     file.scssLinks = file.scssLinks || [];
     ~file.scssLinks.indexOf(link) || file.scssLinks.push(link);
 }
@@ -70,10 +77,10 @@ function resolve_and_load(filename, dir) {
 
     var found = null;
 
-    files.every(function(url) {
+    files.every(function (url) {
         var file = fis.util(dir, url);
 
-        if( file && fis.util.isFile(file)  ) {
+        if (file && fis.util.isFile(file)) {
             found = fis.file(file);
             return false;
         }
@@ -87,7 +94,7 @@ function resolve_and_load(filename, dir) {
 function find(filename, paths) {
     var found = null;
 
-    paths.every(function(dir) {
+    paths.every(function (dir) {
         var file;
 
         if ((file = resolve_and_load(filename, dir))) {
@@ -105,7 +112,7 @@ function fixSourcePath(content, file) {
     // 处理，解决资源引用路径问题。
     content = fis.compile.extCss(content);
 
-    return content.replace(fis.compile.lang.reg, function(all, type, depth, value) {
+    return content.replace(fis.compile.lang.reg, function (all, type, depth, value) {
         // 如果是 fis2 的版本
         if (!fis.match) {
             value = depth;
@@ -124,7 +131,7 @@ function fixSourcePath(content, file) {
 function fixImport(content) {
     var reg = /((?:\/\/.*?\n)|(?:\/\*[\s\S]*?\*\/))|(?:@import\s([\s\S]*?)(?:\n|$)(?!\s+[^{@]*\n))/ig;
 
-    return content.replace(reg, function(all, comments, value) {
+    return content.replace(reg, function (all, comments, value) {
 
         if (!comments && value && !/;$/.test(value)) {
             all += ';';
@@ -134,7 +141,7 @@ function fixImport(content) {
     });
 }
 
-module.exports = function(content, file, conf){
+module.exports = function (content, file, conf) {
 
     // 不处理空文件，处理空文件有人反馈报错。
     if (!content || !content.trim()) {
@@ -145,7 +152,7 @@ module.exports = function(content, file, conf){
     var backups = {};
     var backupId = 0;
     content = fixImport(content);
-    content = content.replace(/('|")\\\w{4}\1/g, function(raw) {
+    content = content.replace(/('|")\\\w{4}\1/g, function (raw) {
         var id = backupId++;
         backups[id] = raw;
         return "'__scss_backup_" + id + "'";
@@ -163,9 +170,9 @@ module.exports = function(content, file, conf){
     // file.dirname !== root && opts.includePaths.unshift(file.dirname);
     opts.includePaths.push(root);
 
-    opts.includePaths = opts.includePaths.map(function( dir ) {
+    opts.includePaths = opts.includePaths.map(function (dir) {
 
-        if (path.resolve( dir ) != path.normalize( dir )) {
+        if (path.resolve(dir) != path.normalize(dir)) {
             dir = path.join(root, dir);
         }
 
@@ -183,7 +190,7 @@ module.exports = function(content, file, conf){
     var includePaths = opts.includePaths.concat();
     var sources = [file.subpath];
 
-    opts.importer = function(url, prev, done) {
+    opts.importer = function (url, prev, done) {
         prev = prev.replace(/^\w+\:/, ''); // windows 里面莫名加个盘符。
 
         url = lookupLego(url);
@@ -192,10 +199,11 @@ module.exports = function(content, file, conf){
         var prevFile = find(prev, stacks.concat(includePaths));
 
         if (!prevFile) {
-            throw new Error('Can\'t find `' + prev +'`');
+            console.error('Can\'t find `' + prev + '`');
+            throw new Error('Can\'t find `' + prev + '`');
         }
 
-        var  dirname = prevFile.dirname;
+        var dirname = prevFile.dirname;
 
         // 如果已经在里面
         var idx = stacks.indexOf(dirname);
@@ -206,12 +214,14 @@ module.exports = function(content, file, conf){
 
         var target = find(url, stacks.concat(includePaths));
         if (!target) {
-            throw new Error('Can\'t find `' + url +'` in `' + prev + '`');
+            var errMsg = 'Can\'t find `' + url + '` in `' + prev + '`';
+            console.error(errMsg);
+            throw new Error(errMsg);
         }
 
         var content = target.getContent();
         content = fixSourcePath(content, target);
-        content = content.replace(/('|")\\\w{4}\1/g, function(raw) {
+        content = content.replace(/('|")\\\w{4}\1/g, function (raw) {
             var id = backupId++;
             backups[id] = raw;
             return "'__scss_backup_" + id + "'";
@@ -221,17 +231,17 @@ module.exports = function(content, file, conf){
             file.cache.addDeps(target.realpath);
         }
         //解决include_path 内import导致subpath为空报错问题
-        if(!target.subpath){
-            target.subpath = path.relative(root, target.realpath).replace(/\\/g,'/');
+        if (!target.subpath) {
+            target.subpath = path.relative(root, target.realpath).replace(/\\/g, '/');
             // 替换 \ 为 /
-            if(target.subpath[0]!==''){
+            if (target.subpath[0] !== '') {
                 target.subpath = '/' + target.subpath;
             }
         }
 
         ~sources.indexOf(target.subpath) || sources.push(target.subpath);
 
-        addScssLink(file,target.subpath);
+        addScssLink(file, target.subpath);
 
         return {
             file: target.subpath,
@@ -243,8 +253,8 @@ module.exports = function(content, file, conf){
         opts.sourceMapContents = true;
         var mapping = fis.file.wrap(file.dirname + '/' + file.filename + file.rExt + '.map');
 
-        opts.sourceMap = mapping.getUrl(fis.compile.settings.hash, fis.compile.settings.domain);
-        file.release && (opts.outFile = file.getUrl(fis.compile.settings.hash, fis.compile.settings.domain));
+        opts.sourceMap = mapping.getUrl(fis.compile.settings.hash,  fis.compile.settings.domain);
+        file.release && (opts.outFile = file.getUrl(fis.compile.settings.hash,  fis.compile.settings.domain));
     }
 
     var ret;
@@ -281,7 +291,7 @@ module.exports = function(content, file, conf){
     }
 
     content = ret.css.toString('utf8');
-    content = content.replace(/('|")__scss_backup_(\d+)\1/g, function(_, quote, index) {
+    content = content.replace(/('|")__scss_backup_(\d+)\1/g, function (_, quote, index) {
         return backups[index];
     });
 
